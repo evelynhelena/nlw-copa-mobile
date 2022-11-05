@@ -2,6 +2,7 @@ import { createContext, ReactNode, useEffect, useState } from 'react';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { api } from '../services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,11 +24,11 @@ interface AuthProviderProps {
 export const AuthContext = createContext({} as AuthContextDataProps);
 
 export function AuthContextProvider({ children }: AuthProviderProps) {
-    const [user,setUser] = useState<UserProps>({} as UserProps)
+    const [user, setUser] = useState<UserProps>({} as UserProps)
     const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
 
     const [rquest, response, promptAsync] = Google.useAuthRequest({
-        clientId: '' ,//PEGAR do notas
+        clientId: '',
         redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
         scopes: ['profile', 'email']
     })
@@ -44,15 +45,28 @@ export function AuthContextProvider({ children }: AuthProviderProps) {
         }
     }
 
-    async function signInWithGoogle(accessToken: string){
-        console.log('Tokem ===>',accessToken)
+    async function signInWithGoogle(accessToken: string) {
+        try {
+            setIsUserLoading(true);
+
+            const tokenResponse = await api.post('/users', { accessToken });
+            api.defaults.headers.common['Authorization'] = `Bearer ${tokenResponse.data.token}`
+
+            const userInfoResponse = await api.get('/me');
+            setUser(userInfoResponse.data.user);
+
+        } catch (e) {
+            console.log(e);
+        } finally {
+            setIsUserLoading(false);
+        }
     }
 
     useEffect(() => {
-        if(response?.type === 'success' && response.authentication?.accessToken) {
+        if (response?.type === 'success' && response.authentication?.accessToken) {
             signInWithGoogle(response.authentication.accessToken);
         }
-    },[response])
+    }, [response])
 
     return (
         <AuthContext.Provider value={
