@@ -24,7 +24,7 @@ export function FindPool() {
                 })
             }
 
-            await api.post('/pools/join', { code });
+            await api.post('/pools/join', { code: code.toUpperCase() });
             navigate('pools');
         } catch (e) {
             setIsLoading(false);
